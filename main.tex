@@ -43,7 +43,7 @@
 %----------------------------------------------------------------------------------------
 
 \HRule \\[0.4cm]
-{ \huge \bfseries User Guide Motion Sensor}\\[0.4cm] % Title of your document
+{ \huge \bfseries Technical description and User guide: Motion Sensor for behavioral rodent experiments using optical computer mice}\\[0.4cm] % Title of your document
 \HRule \\[1.5cm]
  
 %----------------------------------------------------------------------------------------
@@ -94,9 +94,15 @@ Jamie \textsc{Johnston}\\[0.3cm] % Supervisor's Name
 
 
 \section{Introduction}
-This user guide intends to provide the user with the information required to use and understand the ball motion sensor device developed at JohnstonLab as well as giving some clues regarding troubleshooting and help with the other tools developed as well
+This user guide intends to provide the user with the information required to use and understand the ball motion sensor device developed at JohnstonLab as well as giving some clues regarding troubleshooting and help with the other tools developed as well.\\
 
-The latest updates are available on my Github: \url{https://github.com/maverstr/PS2-Motion-Sensor}
+This device was developed as part of my internship at JohnstonLab (Leeds University, UK) during my master's years as a student engineer from the Université Libre de Bruxelles, Belgium.
+
+This device is part of the rig that allows the lab to perform in-vivo measurements and experiments on mice. This device gathers data from optical computer mice to use them as motion sensor for behavioral studies on mice.\\
+
+Note: The workflow, thoughts, issues, ... for this project are discussed in my OneNote.\\
+
+The latest software and documentation updates are available on my Github: \url{https://github.com/maverstr/PS2-Motion-Sensor}
 
 \section{Objective}
 When performing behavioral studies on mice, it is interesting to be able to set up a Virtual Reality setup. To do so, the mouse should be able to move freely but still be under the field of view of the microscope, like on a treadmill. The best 3D treadmill is obviously a sphere. 
@@ -118,7 +124,7 @@ The goal of this device is therefore to act as a motion sensor for VR experiment
 \section{Hardware}
 The device is extremely simple and is composed of mainly 4 parts:
 \subsection{Optical mouse}
-The main element is an optical (computer mouse) that will act as the sensor.
+The main element is an optical computer mouse that will act as the sensor.
 Computer mice have a high sampling rate for computing the deltaX and deltaY and are capable of a great precision.
 The main characteristic is the dpi (dot per inch) as it will limit the maximum speed of movement detection and the accuracy. 
 We use a Perixx PERIMICE-201 II (800 dpi and around 7£).
@@ -183,12 +189,13 @@ To hold the mice in place very close to the ball, I designed 3D-printed holders.
 The mouse holders can be attached to the microscopic rig through the bolt going through it.
 
 \subsection{Microcontroller}
-The logic part of the device is handled by an Arduino Mega (even though any Arduino or other µC will do). It provides Ground and 5V supply and receives SDA and SCL for each mouse.
+The logic part of the device is handled by an Arduino Mega (even though any Arduino or other µC will do as long as it has 4 digital inputs, 5V supply and a connection to ground). It provides Ground and 5V supply and receives SDA and SCL for each mouse.
+Note that even though PS/2 is using SDA and SCL, the µC does not require I2C ports with the used libraries. Any digital inputs will do.
 
 \section{Software}
 A PS2 library is able to get the deltaX and deltaY every frame. I simply print the correct values to the Serial and perform vector computation in polar coordinates.
 
-The data can be transferred over I2C to another µC.
+The data can also be transferred over I2C to another µC if needed(but it is not the case in our device plan).
 
 \section{How to use?}
 Simply plug the mice into the hacked PS2 connectors and plug the Arduino. It will immediately start sending the data over Serial.
@@ -203,11 +210,31 @@ This data can also easily be transferred over I2C.
 \end{figure}
 
 \section{Expected Results}
-The Arduino should send the motion over Serial. This can be checked through the Arduino IDE. Moreover, the Processing3 script (section \ref{processing}) will draw the corresponding motion on a map.
+The Arduino should send the motion over Serial. This can be checked through the Arduino IDE. Moreover, the Processing3 script (section \ref{processing}) will draw the corresponding motion on a map (Figure \ref{fig:procMap}).
+
+
+
+\subsection{From mice data to movement mapping}
+The libraries used allow to get the X and Y data for each mouse as an 8-bit signed value (-127 to +127). Given that the mice are placed 90 degrees apart from each other on the side of the ball (the rodent running on top), a mouse can detects the X movement of the ball (i.e. rotation left/right from a top view of the rodent, perfect crab-walk), the other can detect the Y (i.e. the rodent running forward/backward) and both of them also detect the Z axis movement (i.e. the rodent is turning). 
+
+The redundancy of Z can be either discarded on one mouse or used for data verification.
+
+The conversion to an actual map of motion is done by using a rotation matrix using Z as the rotation angle.
+It is obviously necessary to calibrate the axis (i.e. how many dots for one single 360 degrees rotation. In our case, 13 000 is a good approximation).
+
+
+We can then decide to either output the absolute values on the Serial and/or to the I2C bus to the microscopic rig and ScanImage or make the computation to output the values with the rotation around the Z axis.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width = 8cm]{images/processingMap.PNG}
+    \caption{Map drawn on Processing3}
+    \label{fig:procMap}
+\end{figure}
 
 \section{Troubleshooting}
 \subsection{The motion map does not correspond to actual movements}
-One mouse handles X and Y movement, the other will handle Z and (redundant) Y. It is therefore important to place 90 degrees apart and in the correct place as well as perpendicular to the ball.
+One mouse handles X and Y movement, the other will handle Z and (redundant) Y. It is therefore important to place them 90 degrees apart from each other as well as perpendicular to the ball.
 \section{Improvements}
 \subsection{laser mouse}
 The mouse used for the moment is an optical mouse, which uses a LED as light source which is cheap. The mouse could be replaced by a laser mouse which uses a laser as the source.
@@ -222,6 +249,11 @@ Having a higher DPI is useful to be more sensitive and allow fast movements to b
 Having a higher DPI means that the max speed will be reduced as the maximum 8-bit values will be reached on a smaller distance (more dots per inch) but the mouse will be more sensitive.
 All in all, a higher DPI means a more sensitive mouse, but one must be careful not to decrease the max speed too much otherwise the data will be saturated all the time.
 
+\subsection{Direct use of the sensor}
+USB mice are already largely prefered over PS/2 mice and it might get difficult in the coming years to find working PS/2 mice. Moreover, the CAD holder is designed for a specific mouse model.
+It might be interesting to directly wire the connectors to the PCB (easily done thanks to the MTA connectors) and disassemble the mouse or even directly use the sensor.
+This however requires more work in case of replacement and it might get too technical for a biology lab for such a small improvement. The "plug\&play" approach proposed here is therefore preferred.
+
 \section{Other tools}
 \subsection{Processing3 Visualisation}
 \label{processing}
@@ -229,7 +261,10 @@ I developed a Processing3 (Java) script that gathers data from the Serial port a
 
 To use it, simply plug the Arduino into the computer and select the correct COM port in Processing. A gray window opens, press any key to start and move the mice to observe the drawing.
 
+The device can be seen on video: \url{https://youtu.be/RcX8a1zjNxQ}
+
 \appendix
+
 
 \bibliographystyle{alpha}
 \bibliography{biblio}
